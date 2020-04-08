@@ -28,6 +28,21 @@ for key, value in plays_dict.items():
     print(key, value)
     get_play_text(key, value)
 
+test_url = "http://shakespeare.mit.edu/allswell/full.html"
+plays_text = dict()
+# def organize_script(play):
+#     playdict = dict()
+#     response = requests.get(plays_dict[play])
+#     soup = bs(response.text, "html.parser")
+#     for line in soup:
+#         if
+
+def write_to_local(play):
+    with open(play + '.html', 'wb') as file:
+        file.write(play_text_dict[play].prettify('utf-8'))
+
+for play in plays_dict.keys():
+    write_to_local(play)
 # pd.DataFrame(play_text_dict).to_csv("plays_text.csv")
 # print(play_text_dict)
 

@@ -2,7 +2,9 @@ import nltk
 from nltk.corpus import gutenberg, shakespeare
 import requests
 from bs4 import BeautifulSoup as bs
+import os
 import pandas as pd
+import sqlite3
 import urllib.request
 from nltk.tokenize import word_tokenize
 from nltk.stem.porter import PorterStemmer
@@ -42,42 +44,50 @@ def write_to_local(play):
         file.write(play_text_dict[play].prettify('utf-8'))
 
 for play in plays_dict.keys():
-    write_to_local(play)
-# pd.DataFrame(play_text_dict).to_csv("plays_text.csv")
-# print(play_text_dict)
+    if not os.path.exists(play + '.html'):
+        write_to_local(play)
 
 
-# get_play_text("http://shakespeare.mit.edu/allswell/index.html")
-# print(list(plays_dict.values())[0])
-# print(plays_dict.items[1])
-# for play, url in plays_dict.items():
-#     print(url)
-# print(plays_list.findAll('td'))
-# for cell in plays_list:
-#     print(cell.find_all('href'))
-    # for play in link.find('td'):
-    #     print(play.href)
+def scrape_text(play):
+    play_html = bs(open(play), "html.parser")
+    play_text = list()
+    play_speechname = list()
+    for line in play_html.find_all('a', {"name": True}):
+        if line and len(line) >0:
+            line_text = line.text.strip().replace("\n", "")
+            play_text.append(line_text)
+            play_speechname.append(line['name'])
+    playname = play_html.find('table').find('td').text.replace("\n", "").strip().split('  ')[0]
+    return pd.DataFrame({'texttype': play_speechname,
+                          'text': play_text,
+                       'play': [playname] * len(play_speechname)})
 
+def clean_play_dat(df):
+    df['joincol'] = df.index
+    df_speakers = df.loc[df.texttype.str.contains("speech"), ["text", "joincol"]]
+    df_speakers.columns = ['speaker', 'joincol']
+    df_speeches = df.loc[~df.texttype.str.contains("speech"), ["texttype", "text", "joincol", "play"]]
+    clean_df = pd.merge_asof(df_speeches, df_speakers, on = 'joincol', direction = 'backward')
+    clean_df[['act', 'scene', 'line']] = clean_df.texttype.str.split(".", expand = True)
+    return clean_df
 
-# print(soup.findAll('table'))
-#
-# dream = shakespeare.xml("dream.xml")
-# personae = [persona.text for persona in dream.findall('PERSONAE/PERSONA')]
-# speakers = set(speaker.text for speaker in dream.findall('*/*/*/SPEAKER'))
-# speaker_order = [speaker.text for speaker in dream.findall('*/*/*/SPEAKER')]
-#
-# #lines = [act.text for act in dream.findall('*/*/*/*/LINE')]
-#
-# kjv = nltk.Text(gutenberg.words("bible-kjv.txt"))
-# caesar = nltk.Text(gutenberg.words("shakespeare-caesar.txt"))
-# macbeth = nltk.Text(gutenberg.words("shakespeare-macbeth.txt"))
-# hamlet = nltk.Text(gutenberg.words("shakespeare-hamlet.txt"))
-#
-# print("KJV: {} \nCaeser: {} \nMacbeth: {} \nHamlet: {}".format(len(kjv), len(caesar), len(macbeth), len(hamlet)))
-#
-# dream_tree = ET.parse(dream)
-# dream_root = dream_tree.getroot()
-#
-# print(dream_tree, "\n", dream_root)
-# #def get_speakers(play):
- #   for
+listofplays = list()
+
+for file in os.listdir():
+    if file.endswith(".html"):
+        listofplays.append(file)
+
+list_of_poems = ["The Sonnets.html",
+"A Lover's Complaint.html",
+"The Rape of Lucrece.html",
+"Venus and Adonis.html",
+"Funeral Elegy by W.S..html"]
+listofplays = [play for play in listofplays if play not in list_of_poems]
+
+con = sqlite3.connect("data/shakespeare.sqlite")
+cur = con.cursor()
+
+for play in listofplays:
+    df = scrape_text(play)
+    clean_df = lean_play_dat(df)
+    clean_df[["play", "text", "speaker", "act", "scene", "line"]].to_sql("speakers", con, if_exists = "append", index = False)

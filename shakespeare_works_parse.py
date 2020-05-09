@@ -19,7 +19,7 @@ def get_links_to_works(url):
     for elem in plays_list.findAll('a'):
         plays_dict[elem.text.replace("\n", "")] = plays_list_url + elem['href'].replace("index", "full")
 get_links_to_works(plays_list_url)
-print(plays_dict)
+# print(plays_dict)
 play_text_dict = dict()
 def get_play_text(play, url):
     response = requests.get(url)
@@ -27,7 +27,7 @@ def get_play_text(play, url):
     play_text_dict[play] = soup
 
 for key, value in plays_dict.items():
-    print(key, value)
+    # print(key, value)
     get_play_text(key, value)
 
 test_url = "http://shakespeare.mit.edu/allswell/full.html"
@@ -89,5 +89,5 @@ cur = con.cursor()
 
 for play in listofplays:
     df = scrape_text(play)
-    clean_df = lean_play_dat(df)
+    clean_df = clean_play_dat(df)
     clean_df[["play", "text", "speaker", "act", "scene", "line"]].to_sql("speakers", con, if_exists = "append", index = False)

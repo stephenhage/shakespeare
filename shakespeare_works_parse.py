@@ -1,14 +1,9 @@
-import nltk
-from nltk.corpus import gutenberg, shakespeare
 import requests
 from bs4 import BeautifulSoup as bs
 import os
 import pandas as pd
 import sqlite3
 import urllib.request
-from nltk.tokenize import word_tokenize
-from nltk.stem.porter import PorterStemmer
-import xml.etree.ElementTree as ET
 
 plays_list_url = "http://shakespeare.mit.edu/"
 plays_dict = dict()
@@ -19,7 +14,7 @@ def get_links_to_works(url):
     for elem in plays_list.findAll('a'):
         plays_dict[elem.text.replace("\n", "")] = plays_list_url + elem['href'].replace("index", "full")
 get_links_to_works(plays_list_url)
-# print(plays_dict)
+
 play_text_dict = dict()
 def get_play_text(play, url):
     response = requests.get(url)
@@ -27,17 +22,10 @@ def get_play_text(play, url):
     play_text_dict[play] = soup
 
 for key, value in plays_dict.items():
-    # print(key, value)
     get_play_text(key, value)
 
 test_url = "http://shakespeare.mit.edu/allswell/full.html"
 plays_text = dict()
-# def organize_script(play):
-#     playdict = dict()
-#     response = requests.get(plays_dict[play])
-#     soup = bs(response.text, "html.parser")
-#     for line in soup:
-#         if
 
 def write_to_local(play):
     with open(play + '.html', 'wb') as file:
@@ -46,7 +34,6 @@ def write_to_local(play):
 for play in plays_dict.keys():
     if not os.path.exists(play + '.html'):
         write_to_local(play)
-
 
 def scrape_text(play):
     play_html = bs(open(play), "html.parser")
@@ -64,8 +51,8 @@ def scrape_text(play):
 
 def clean_play_dat(df):
     df['joincol'] = df.index
-    df_speakers = df.loc[df.texttype.str.contains("speech"), ["text", "joincol"]]
-    df_speakers.columns = ['speaker', 'joincol']
+    df_speakers = df.loc[df.texttype.str.contains("speech"), ["text", "joincol", 'texttype']]
+    df_speakers.columns = ['speaker', 'joincol', 'speechno']
     df_speeches = df.loc[~df.texttype.str.contains("speech"), ["texttype", "text", "joincol", "play"]]
     clean_df = pd.merge_asof(df_speeches, df_speakers, on = 'joincol', direction = 'backward')
     clean_df[['act', 'scene', 'line']] = clean_df.texttype.str.split(".", expand = True)
@@ -90,4 +77,4 @@ cur = con.cursor()
 for play in listofplays:
     df = scrape_text(play)
     clean_df = clean_play_dat(df)
-    clean_df[["play", "text", "speaker", "act", "scene", "line"]].to_sql("speakers", con, if_exists = "append", index = False)
+    clean_df[["play", "text", "speaker", "speechno", "act", "scene", "line"]].to_sql("speakers", con, if_exists = "append", index = False)
